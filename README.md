@@ -96,3 +96,80 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## Configuração do PostgreSQL com o Docker
+
+- arquivo docker-compose.yml
+
+```bash
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    volumes:
+     - type: tmpfs
+       target: /dev/shm
+       tmpfs:
+         size: 134217728 # 128*2^20 bytes = 128Mb
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nest-docker-postgres
+    environment:
+      - PORT=${PORT}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+    volumes:
+      - ./src:/app/src
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+```
+db: Este serviço configura um banco de dados PostgreSQL usando a imagem postgres oficial do Docker hub.
+app: Este serviço cria uma imagem Docker para o aplicativo NestJS usando o Dockerfile.
+adminer: Este serviço cria o Adminer, um sistema de gerenciamento de banco de dados (SGBD) escrito em PHP
+
+- arquivo Dockerfile
+
+```bash
+FROM node:18
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+CMD [ "npm", "run", "start:dev" ]
+```
+
+- arquivo .dockerignore
+
+```bash
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+dist
+```
+
+- execulte o seguinte comando para criar os contêineres e executar nosso aplicativo no Docker
+
+```bash
+$ docker compose up
+```
+
